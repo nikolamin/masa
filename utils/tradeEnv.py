@@ -263,6 +263,8 @@ class StockPortfolioEnv(gym.Env):
 
             daily_return_ay = np.array(list(self.curData['DAILYRETURNS-{}'.format(self.config.dailyRetun_lookback)].values))
             cur_cov = np.cov(daily_return_ay) 
+            if np.isscalar(cur_cov):
+                cur_cov = np.array([[cur_cov]], dtype=float)
             self.risk_cbf_lst.append(np.sqrt(np.matmul(np.matmul(weights, cur_cov), weights.T))) # Daily risk
             w_rl = self.action_rl_memory[-1] # weights - self.action_cbf_memeory[-1]
             w_rl = w_rl / np.sum(np.abs(w_rl))
@@ -286,6 +288,8 @@ class StockPortfolioEnv(gym.Env):
             expected_r_prev = np.where((expected_r_prev>=1)&(weights<0), 1, expected_r_prev)
             expected_r = np.sum(np.reshape(expected_r_prev, (1, -1)) @ np.reshape(weights, (-1, 1)))
             expected_cov = np.cov(expected_r_series)
+            if np.isscalar(expected_cov):
+                expected_cov = np.array([[expected_cov]], dtype=float)
             expected_std = np.sum(np.sqrt(np.reshape(weights, (1, -1)) @ expected_cov @ np.reshape(weights, (-1, 1))))
             cvar_lz = spstats.norm.ppf(1-0.05) # positive 1.65 for 95%(=1-alpha) confidence level.
             cvar_Z = np.exp(-0.5*np.power(cvar_lz, 2)) / 0.05 / np.sqrt(2*np.pi)
@@ -329,6 +333,8 @@ class StockPortfolioEnv(gym.Env):
             elif (self.config.mode == 'RLonly') and (self.config.trained_best_model_type == 'pr_loss'):
                 # overall return maximisation + risk minimisation
                 cov_r_t0 = np.cov(self.ctl_state['DAILYRETURNS-{}'.format(self.config.dailyRetun_lookback)])
+                if np.isscalar(cov_r_t0):
+                    cov_r_t0 = np.array([[cov_r_t0]], dtype=float)
                 risk_part = np.sqrt(np.matmul(np.matmul(np.array([weights]), cov_r_t0), np.array([weights]).T)[0][0])
                 scaled_risk_part = (-1) * risk_part * 50
                 scaled_profit_part = profit_part * self.config.lambda_1
@@ -337,6 +343,8 @@ class StockPortfolioEnv(gym.Env):
             elif (self.config.mode == 'RLonly') and (self.config.trained_best_model_type == 'sr_loss'):
                 # Sharpe ratio maximisation
                 cov_r_t0 = np.cov(self.ctl_state['DAILYRETURNS-{}'.format(self.config.dailyRetun_lookback)])
+                if np.isscalar(cov_r_t0):
+                    cov_r_t0 = np.array([[cov_r_t0]], dtype=float)
                 risk_part = np.sqrt(np.matmul(np.matmul(np.array([weights]), cov_r_t0), np.array([weights]).T)[0][0])
                 profit_part = poDayReturn_withcost
                 scaled_profit_part = profit_part
@@ -954,6 +962,8 @@ class StockPortfolioEnv_cash(StockPortfolioEnv):
             # For debugging
             daily_return_ay = np.array(list(self.curData['DAILYRETURNS-{}'.format(self.config.dailyRetun_lookback)].values))
             cur_cov = np.cov(daily_return_ay) 
+            if np.isscalar(cur_cov):
+                cur_cov = np.array([[cur_cov]], dtype=float)
             self.risk_cbf_lst.append(np.sqrt(np.matmul(np.matmul(weights[1:], cur_cov), weights[1:].T)))
             w_rl = self.action_rl_memory[-1] # Not applicable # weights[1:] - self.action_cbf_memeory[-1]
             w_rl = w_rl / np.sum(np.abs(w_rl))
@@ -976,6 +986,8 @@ class StockPortfolioEnv_cash(StockPortfolioEnv):
             expected_r_prev = np.where((expected_r_prev>=1)&(weights[1:]<0), 1, expected_r_prev)
             expected_r = np.sum(np.reshape(expected_r_prev, (1, -1)) @ np.reshape(weights[1:], (-1, 1)))
             expected_cov = np.cov(expected_r_series)
+            if np.isscalar(expected_cov):
+                expected_cov = np.array([[expected_cov]], dtype=float)
             expected_std = np.sum(np.sqrt(np.reshape(weights[1:], (1, -1)) @ expected_cov @ np.reshape(weights[1:], (-1, 1))))
             cvar_lz = spstats.norm.ppf(1-0.05) # positive 1.65 for 95%(=1-alpha) confidence level.
             cvar_Z = np.exp(-0.5*np.power(cvar_lz, 2)) / 0.05 / np.sqrt(2*np.pi)
@@ -1019,6 +1031,8 @@ class StockPortfolioEnv_cash(StockPortfolioEnv):
             elif (self.config.mode == 'RLonly') and (self.config.trained_best_model_type == 'pr_loss'):
                 # overall return maximisation + risk minimisation
                 cov_r_t0 = np.cov(self.ctl_state['DAILYRETURNS-{}'.format(self.config.dailyRetun_lookback)])
+                if np.isscalar(cov_r_t0):
+                    cov_r_t0 = np.array([[cov_r_t0]], dtype=float)
                 risk_part = np.sqrt(np.matmul(np.matmul(np.array([weights[1:]]), cov_r_t0), np.array([weights[1:]]).T)[0][0])
                 scaled_risk_part = (-1) * risk_part * 50
                 scaled_profit_part = profit_part * self.config.lambda_1
@@ -1027,6 +1041,8 @@ class StockPortfolioEnv_cash(StockPortfolioEnv):
             elif (self.config.mode == 'RLonly') and (self.config.trained_best_model_type == 'sr_loss'):
                 # Sharpe ratio maximisation                
                 cov_r_t0 = np.cov(self.ctl_state['DAILYRETURNS-{}'.format(self.config.dailyRetun_lookback)])
+                if np.isscalar(cov_r_t0):
+                    cov_r_t0 = np.array([[cov_r_t0]], dtype=float)
                 risk_part = np.sqrt(np.matmul(np.matmul(np.array([weights[1:]]), cov_r_t0), np.array([weights[1:]]).T)[0][0])
                 profit_part = poDayReturn_withcost
                 scaled_profit_part = profit_part

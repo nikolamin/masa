@@ -12,8 +12,6 @@
 import numpy as np
 import pandas as pd
 import time
-from cvxopt import matrix, solvers
-solvers.options['show_progress'] = False
 import cvxpy as cp
 from scipy.linalg import sqrtm
 import scipy.stats as spstats
@@ -66,6 +64,8 @@ def cbf_opt(env, a_rl, pred_dict):
     daily_return_ay = env.ctl_state['DAILYRETURNS-{}'.format(env.config.dailyRetun_lookback)]
     
     cov_r_t0 = np.cov(daily_return_ay)
+    if np.isscalar(cov_r_t0):
+        cov_r_t0 = np.array([[cov_r_t0]], dtype=float)
     w_t0 = np.array([env.actions_memory[-1]])
     try:
         risk_stg_t0 = np.sqrt(np.matmul(np.matmul(w_t0, cov_r_t0), w_t0.T)[0][0])
@@ -89,18 +89,22 @@ def cbf_opt(env, a_rl, pred_dict):
     r_t1 = np.append(daily_return_ay[:, 1:], pred_prices_change_reshape, axis=1)
 
     cov_r_t1 = np.cov(r_t1)
+    if np.isscalar(cov_r_t1):
+        cov_r_t1 = np.array([[cov_r_t1]], dtype=float)
     cov_sqrt_t1 = sqrtm(cov_r_t1)
     cov_sqrt_t1 = cov_sqrt_t1.real
     G_ay = np.array([]).reshape(-1, N)
 
     h_0 = np.array([])
     
-    use_cvxopt_threshold = 10 # using cvxopt tool will be faster when the size of portfolio is less than or equal to 10. Otherwise, the cvxpy tool will be faster.
+    use_cvxopt_threshold = 0 # prefer cvxpy path by default to avoid cvxopt dependency
     w_lb = 0
     w_ub = 1
 
     if env.config.topK <= use_cvxopt_threshold:
         # Implemented by cvxopt
+        from cvxopt import matrix, solvers
+        solvers.options['show_progress'] = False
         A_eq = np.array([]).reshape(-1, N)
         linear_g1 = np.array([[1.0] * N]) # (1, N)
         A_eq = np.append(A_eq, linear_g1, axis=0)

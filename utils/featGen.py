@@ -11,7 +11,42 @@ import numpy as np
 import pandas as pd
 import copy
 import os
-from talib import abstract
+try:
+    from talib import abstract  # type: ignore
+except Exception:
+    # Minimal fallback for TA-Lib abstract.Function used in this repo.
+    # We only need 'ma' in the current implementation. If TA-Lib is not
+    # installed, provide a simple moving average implementation compatible
+    # with the expected interface.
+    class _MAWrapper:
+        def __init__(self):
+            self.input_names = {'price': 'close'}
+            self.output_names = ['real']
+
+        def __call__(self, data, timeperiod=None, price='close', prices=None):
+            # data can be ndarray/Series or a DataFrame with OHLCV
+            if isinstance(data, (np.ndarray, pd.Series, list)):
+                series = np.asarray(data, dtype=np.float64)
+            else:
+                col = prices if prices is not None else price
+                series = np.asarray(data[col], dtype=np.float64)
+            if timeperiod is None or int(timeperiod) <= 1:
+                return pd.Series(series)
+            window = int(timeperiod)
+            # Align with TA-Lib: first window-1 values are NaN
+            result = np.full_like(series, fill_value=np.nan, dtype=np.float64)
+            cumsum = np.cumsum(series, dtype=float)
+            cumsum[window:] = cumsum[window:] - cumsum[:-window]
+            result[window-1:] = cumsum[window-1:] / window
+            return pd.Series(result)
+
+    class abstract:  # type: ignore
+        @staticmethod
+        def Function(name):
+            lname = str(name).lower()
+            if lname in ['ma', 'sma', 'moving_average']:
+                return _MAWrapper()
+            raise ImportError("TA-Lib is not installed and fallback only supports 'MA'.")
 import sys
 sys.path.append(".")
 

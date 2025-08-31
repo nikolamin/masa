@@ -28,10 +28,10 @@ class Config():
 
         self.notes = 'AAMAS MASA Implementation'
 
-        self.benchmark_algo = 'MASA-dc' # Algorithm: 'MASA-dc', 'MASA-mlp', 'MASA-lstm', 'TD3-Profit', 'TD3-PR', 'TD3-SR', 'CRP', (Please implement firstly before running 'EG', 'OLMAR', 'PAMR', 'CORN', 'RMR', 'EIIE', 'PPN', 'RAT')
-        self.market_name = 'DJIA' # Financial Index: 'DJIA', 'SP500', 'CSI300'
-        self.topK = 10 # Number of assets in a portfolio (10, 20, 30)
-        self.num_epochs = 50 # episode.
+        self.benchmark_algo = os.getenv('BENCHMARK_ALGO', 'MASA-dc') # Algorithm: 'MASA-dc', 'MASA-mlp', 'MASA-lstm', 'TD3-Profit', 'TD3-PR', 'TD3-SR', 'CRP', (Please implement firstly before running 'EG', 'OLMAR', 'PAMR', 'CORN', 'RMR', 'EIIE', 'PPN', 'RAT')
+        self.market_name = os.getenv('MARKET_NAME', 'DJIA') # Financial Index: 'DJIA', 'SP500', 'CSI300', can be 'EURUSD' for FX
+        self.topK = int(os.getenv('TOPK', '10')) # Number of assets in a portfolio (10, 20, 30)
+        self.num_epochs = int(os.getenv('EPOCHS', '50')) # episode.
 
         if 'TD3' in self.benchmark_algo:
             self.rl_model_name = 'TD3'
@@ -75,9 +75,9 @@ class Config():
         self.risk_down_bound = 0.017
 
 
-        self.period_mode = 1 
+        self.period_mode = int(os.getenv('PERIOD_MODE', '1')) 
         self.tmp_name = 'Cls3_{}_{}_K{}_M{}_{}_{}'.format(self.mode, self.mktobs_algo, self.topK, self.period_mode, self.market_name, self.trained_best_model_type)
-        self.dataDir = './data'
+        self.dataDir = os.getenv('DATA_DIR', './data')
         self.pricePredModel = 'MA'
         self.cov_lookback = 5 
         self.norm_method = 'sum'
@@ -147,10 +147,12 @@ class Config():
             'SP500': 1.6575,
             'CSI300': 3.037,
             'DJIA': 1.6575,
+            'EURUSD': 0.0,
         }
 
         self.market_close_time = {
             'CSI300': '15:00:00',
+            'EURUSD': '23:00:00',
         }
         self.invest_env_para = {
             'max_shares': 100, 'initial_asset': 1000000, 'reward_scaling': self.reward_scaling, 'norm_method': self.norm_method, 
@@ -187,8 +189,8 @@ class Config():
         self.po_weight_decay = 0.001
 
     def load_market_observer_config(self):
-        self.freq = '1d'
-        self.finefreq = '60m'
+        self.freq = os.getenv('FREQ', '1d')
+        self.finefreq = os.getenv('FINEFREQ', '60m')
         self.fine_window_size = 4
         self.feat_scaler = 10 
         

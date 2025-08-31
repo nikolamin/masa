@@ -9,8 +9,10 @@
 '''
 
 import os
-os.environ['CUDA_DEVICE_ORDRE'] = 'PCI_BUS_ID'
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_DEVICE_ORDRE'] = os.environ.get('CUDA_DEVICE_ORDRE', 'PCI_BUS_ID')
+if 'CUDA_VISIBLE_DEVICES' not in os.environ:
+    # Default to all visible devices; user can override via env var
+    os.environ['CUDA_VISIBLE_DEVICES'] = ''
 import random 
 import numpy as np
 import torch as th
@@ -18,8 +20,11 @@ import datetime
 import copy
 th.backends.cudnn.deterministic = True
 th.backends.cudnn.benchmark = False
-os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
-th.use_deterministic_algorithms(True)
+os.environ['CUBLAS_WORKSPACE_CONFIG'] = os.environ.get('CUBLAS_WORKSPACE_CONFIG', ':4096:8')
+try:
+    th.use_deterministic_algorithms(True)
+except Exception:
+    pass
 
 import pandas as pd
 import time
