@@ -35,6 +35,27 @@ You may configure the algorithm and trading settings in ```config.py```. After t
 python entrance.py
 ```
 
+### Quickstart: EURUSD one-command run
+
+To fetch EURUSD data and train MASA end-to-end with defaults:
+
+```
+bash run_eurusd.sh
+```
+
+Environment overrides (examples):
+
+```
+EPOCHS=10 START_DATE=2016-01-01 END_DATE=2023-08-31 BENCHMARK_ALGO=MASA-dc bash run_eurusd.sh
+```
+
+Key env vars consumed at runtime:
+- `BENCHMARK_ALGO` (default `MASA-dc`)
+- `MARKET_NAME` (default `EURUSD`)
+- `TOPK` (default `1`)
+- `EPOCHS` (default `5` in script; `50` default in config if run manually)
+- `FREQ`/`FINEFREQ` (default `1d`/`60m`)
+
 ## Details of Building Running Environment
 If encountering any problems when building the running environment, you may follow the below steps by using the docker container:
 1. **Download the pytorch image.**
