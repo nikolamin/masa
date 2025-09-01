@@ -7,6 +7,8 @@ import argparse
 import pandas as pd
 import numpy as np
 from datetime import datetime
+import urllib.request
+import io
 
 def require(module_name):
     try:
@@ -16,11 +18,96 @@ def require(module_name):
         sys.exit(1)
 
 
+def _as_multiindex(df, ticker):
+    # Ensure a MultiIndex column structure like yfinance(group_by='ticker')
+    if df is None or df.empty:
+        return None
+    # Standardize index name for downstream logic
+    if 'Datetime' in df.columns:
+        # Some intervals return a column rather than index; unify as index
+        df = df.set_index('Datetime')
+    if df.index.name is None:
+        df.index.name = 'Date'
+    elif df.index.name not in ('Date', 'Datetime'):
+        df.index.name = 'Date'
+    cols = list(df.columns)
+    return pd.concat({ticker: df[cols]}, axis=1)
+
+
 def fetch_yahoo(tickers, start, end, interval='1d'):
     yf = require('yfinance')
-    # yfinance supports multi-ticker download
-    df = yf.download(tickers, start=start, end=end, interval=interval, auto_adjust=False, progress=False, group_by='ticker')
-    return df
+    # Try a single batched request first
+    try:
+        df = yf.download(tickers, start=start, end=end, interval=interval, auto_adjust=False, progress=False, group_by='ticker', threads=False)
+        # yfinance may return a single-level columns for one ticker; normalize
+        if not isinstance(df.columns, pd.MultiIndex):
+            # Attempt to infer the sole ticker
+            t0 = tickers[0] if isinstance(tickers, (list, tuple)) and len(tickers) > 0 else (tickers if isinstance(tickers, str) else 'T')
+            df = _as_multiindex(df, str(t0).upper())
+        return df
+    except Exception:
+        pass
+
+    # Fallback: download per-ticker and merge
+    frames = []
+    for t in tickers:
+        try:
+            df_t = yf.download(t, start=start, end=end, interval=interval, auto_adjust=False, progress=False, threads=False)
+            mi = _as_multiindex(df_t, t)
+            if mi is not None:
+                frames.append(mi)
+        except Exception:
+            continue
+    if frames:
+        return pd.concat(frames, axis=1)
+    return pd.DataFrame()
+
+
+# --- Stooq fallback (daily only) ---
+def _stooq_symbol(ticker: str) -> str:
+    t = ticker.strip().lower()
+    mapping = {
+        'goog': 'goog.us',
+        'googl': 'googl.us',
+        'msft': 'msft.us',
+        'aapl': 'aapl.us',
+        'spy': 'spy.us',
+    }
+    return mapping.get(t, f'{t}.us')
+
+
+def _stooq_download_daily_df(ticker: str, start: str, end: str) -> pd.DataFrame:
+    sym = _stooq_symbol(ticker)
+    url = f'https://stooq.com/q/d/l/?s={sym}&i=d'
+    with urllib.request.urlopen(url, timeout=30) as resp:
+        content = resp.read().decode('utf-8')
+    # Parse CSV
+    f = io.StringIO(content)
+    df = pd.read_csv(f)
+    if df.empty:
+        return pd.DataFrame()
+    # Filter range
+    df['Date'] = pd.to_datetime(df['Date'])
+    df = df[(df['Date'] >= pd.to_datetime(start)) & (df['Date'] <= pd.to_datetime(end))]
+    # Align columns with Yahoo
+    df = df.rename(columns={'Open': 'Open', 'High': 'High', 'Low': 'Low', 'Close': 'Close', 'Volume': 'Volume'})
+    df = df.set_index('Date')
+    df.index.name = 'Date'
+    return df[['Open', 'High', 'Low', 'Close', 'Volume']]
+
+
+def fetch_stooq_multi(tickers, start, end) -> pd.DataFrame:
+    frames = []
+    for t in tickers:
+        try:
+            df_t = _stooq_download_daily_df(t, start, end)
+            if not df_t.empty:
+                frames.append(pd.concat({t: df_t}, axis=1))
+        except Exception:
+            continue
+    if frames:
+        return pd.concat(frames, axis=1)
+    return pd.DataFrame()
 
 
 def to_universe(df_multi, tickers):
@@ -72,6 +159,13 @@ def main():
 
     os.makedirs(args.data_dir, exist_ok=True)
     df = fetch_yahoo(tickers, args.start, args.end, interval='1d')
+    # If Yahoo failed or missing most tickers, fallback to Stooq daily
+    missing = []
+    if isinstance(df, pd.DataFrame) and isinstance(df.columns, pd.MultiIndex):
+        have = set(df.columns.get_level_values(0))
+        missing = [t for t in tickers if t not in have]
+    if df is None or df.empty or (len(missing) == len(tickers)):
+        df = fetch_stooq_multi(tickers, args.start, args.end)
     uni = to_universe(df, tickers)
     idx = to_index(uni)
 
