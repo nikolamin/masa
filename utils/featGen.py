@@ -393,9 +393,11 @@ class FeatureProcesser:
 
         if freq == '60m':
             if isHasFineData:
-                mkt_pd['time'] = mkt_pd['date'].apply(lambda x: x.strftime('%H:%M:%S')) # Get hour-min-sec
-                mkt_pd = mkt_pd[mkt_pd['time']==self.config.market_close_time[self.config.market_name]][['date'] + self.config.finemkt_feat_cols_lst + ['mkt_{}_ma'.format(freq), 'mkt_{}_close'.format(freq)]] # Extract the datapoint of the market close time.
-                mkt_pd['date'] = mkt_pd['date'].apply(lambda x: x.strftime('%Y-%m-%d')) # Convert Year-Month-Day hh:mm:ss to Year-Month-Day
+                # Robust selection: take the last available 60m bar per calendar day
+                # Compute indices of last timestamp per calendar day from the original raw_data ordering
+                last_idx = raw_data.groupby(raw_data['date'].dt.date)['date'].idxmax()
+                mkt_pd = mkt_pd.loc[last_idx, ['date'] + self.config.finemkt_feat_cols_lst + ['mkt_{}_ma'.format(freq), 'mkt_{}_close'.format(freq)]]
+                mkt_pd['date'] = mkt_pd['date'].apply(lambda x: x.strftime('%Y-%m-%d'))
                 mkt_pd['date'] = pd.to_datetime(mkt_pd['date'])
             else:
                 mkt_pd['date'] = pd.to_datetime(mkt_pd['date'])
@@ -451,9 +453,10 @@ class FeatureProcesser:
 
             temp = pd.DataFrame(temp)
             if isHasFineData:
-                temp['time'] = temp['date'].apply(lambda x: x.strftime('%H:%M:%S')) # Get hour-min-sec
-                temp = temp[temp['time']==self.config.market_close_time[self.config.market_name]][output_cols] # Extract the datapoint of the market close time.
-                temp['date'] = temp['date'].apply(lambda x: x.strftime('%Y-%m-%d')) # Convert Year-Month-Day hh:mm:ss to Year-Month-Day
+                # Robust selection: take the last available 60m bar per calendar day
+                last_idx = dataSig.groupby(dataSig['date'].dt.date)['date'].idxmax()
+                temp = temp.loc[last_idx, output_cols]
+                temp['date'] = temp['date'].apply(lambda x: x.strftime('%Y-%m-%d'))
             else:
                 temp = temp[output_cols]
             temp.reset_index(drop=True, inplace=True)
