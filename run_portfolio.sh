@@ -14,12 +14,16 @@ FINEFREQ=${FINEFREQ:-60m}
 
 PY=${PY:-python3}
 
-echo "Installing minimal runtime deps first..."
-${PY} -m pip install --user --upgrade pip || true
-${PY} -m pip install --user yfinance pandas numpy matplotlib || true
+if [ "${IN_DOCKER:-}" != "1" ]; then
+  echo "Installing minimal runtime deps first..."
+  ${PY} -m pip install --user --upgrade pip || true
+  ${PY} -m pip install --user yfinance pandas numpy matplotlib || true
 
-echo "Installing project dependencies (may partially fail, continuing)..."
-${PY} -m pip install --user -r requirements.txt || true
+  echo "Installing project dependencies (may partially fail, continuing)..."
+  ${PY} -m pip install --user -r requirements.txt || true
+else
+  echo "Running inside Docker; dependencies already installed in image. Skipping pip installs."
+fi
 
 echo "Fetching portfolio data for: ${TICKERS}"
 ${PY} data/fetch_portfolio.py --tickers "${TICKERS}" --market "${MARKET_NAME}" --start "${START_DATE}" --end "${END_DATE}" --fine | cat
