@@ -53,15 +53,17 @@ jobs:
       - name: Run training & evaluation
         run: |
           chmod +x run_portfolio.sh || true
-          TICKERS="${{ github.event.inputs.tickers }}" \
-          MARKET_NAME="${{ github.event.inputs.market_name }}" \
-          TOPK="${{ github.event.inputs.topk }}" \
-          START_DATE="${{ github.event.inputs.start_date }}" \
-          END_DATE="${{ github.event.inputs.end_date }}" \
-          EPOCHS="${{ github.event.inputs.epochs }}" \
-          FREQ="${{ github.event.inputs.freq }}" \
-          FINEFREQ="${{ github.event.inputs.finefreq }}" \
-          bash -lc 'bash run_portfolio.sh'
+          docker run --rm \
+            -v "$PWD:/app" -w /app \
+            -e TICKERS="${{ github.event.inputs.tickers }}" \
+            -e MARKET_NAME="${{ github.event.inputs.market_name }}" \
+            -e TOPK="${{ github.event.inputs.topk }}" \
+            -e START_DATE="${{ github.event.inputs.start_date }}" \
+            -e END_DATE="${{ github.event.inputs.end_date }}" \
+            -e EPOCHS="${{ github.event.inputs.epochs }}" \
+            -e FREQ="${{ github.event.inputs.freq }}" \
+            -e FINEFREQ="${{ github.event.inputs.finefreq }}" \
+            masa:latest bash -lc 'IN_DOCKER=1 bash run_portfolio.sh'
 
       - name: Archive evaluation artifacts
         uses: actions/upload-artifact@v4

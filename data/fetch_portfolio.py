@@ -82,14 +82,32 @@ def main():
     idx.to_csv(idx_path, index=False)
 
     if args.fine:
-        df60 = fetch_yahoo(tickers, args.start, args.end, interval='60m')
+        # yfinance intraday data (<= 60m) is limited to last ~730 days
+        # Clamp the fine range and only persist 60m data if it fully covers daily dates
+        try:
+            end_dt = pd.to_datetime(args.end)
+        except Exception:
+            end_dt = pd.to_datetime(datetime.now().strftime('%Y-%m-%d'))
+        start_dt = pd.to_datetime(args.start)
+        lower_bound = end_dt - pd.Timedelta(days=728)
+        fine_start = max(start_dt, lower_bound)
+        fine_start_str = fine_start.strftime('%Y-%m-%d')
+        fine_end_str = end_dt.strftime('%Y-%m-%d')
+        df60 = fetch_yahoo(tickers, fine_start_str, fine_end_str, interval='60m')
         if not df60.empty:
             uni60 = to_universe(df60, tickers)
-            idx60 = to_index(uni60)
-            uni60_path = os.path.join(args.data_dir, f'{args.market}_{topk}_60m.csv')
-            idx60_path = os.path.join(args.data_dir, f'{args.market}_60m_index.csv')
-            uni60.to_csv(uni60_path, index=False)
-            idx60.to_csv(idx60_path, index=False)
+            # Compare coverage by day
+            daily_days = set(pd.to_datetime(uni['date']).dt.date.unique())
+            fine_days = set(pd.to_datetime(uni60['date']).dt.date.unique())
+            if daily_days.issubset(fine_days):
+                idx60 = to_index(uni60)
+                uni60_path = os.path.join(args.data_dir, f'{args.market}_{topk}_60m.csv')
+                idx60_path = os.path.join(args.data_dir, f'{args.market}_60m_index.csv')
+                uni60.to_csv(uni60_path, index=False)
+                idx60.to_csv(idx60_path, index=False)
+            else:
+                # Insufficient intraday coverage for the requested daily range; skip writing 60m files
+                pass
 
     print('Saved:')
     print(uni_path)
