@@ -8,9 +8,24 @@ import io
 from datetime import datetime, timedelta
 
 
-def fetch_stooq_eurusd():
-    # Stooq daily data for EURUSD - no API key required
-    url = 'https://stooq.com/q/d/l/?s=eurusd&i=d'
+def stooq_symbol(ticker: str) -> str:
+    t = ticker.strip().lower()
+    mapping = {
+        'eurusd': 'eurusd',
+        'eurusd=x': 'eurusd',
+        'goog': 'goog.us',
+        'googl': 'googl.us',
+        'msft': 'msft.us',
+        'aapl': 'aapl.us',
+        'spy': 'spy.us',
+    }
+    return mapping.get(t, f'{t}.us')
+
+
+def fetch_stooq_daily(ticker: str):
+    # Stooq daily data for a symbol - no API key required
+    sym = stooq_symbol(ticker)
+    url = f'https://stooq.com/q/d/l/?s={sym}&i=d'
     with urllib.request.urlopen(url, timeout=30) as resp:
         content = resp.read().decode('utf-8')
     return content
@@ -174,8 +189,13 @@ def summarize(rows):
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description='Quick bearish indicators from Stooq data')
+    parser.add_argument('--ticker', type=str, default='EURUSD', help='Ticker symbol (e.g., GOOGL, GOOG, MSFT, EURUSD)')
+    args = parser.parse_args()
+
     try:
-        csv_text = fetch_stooq_eurusd()
+        csv_text = fetch_stooq_daily(args.ticker)
         rows = parse_csv(csv_text)
         # Keep last 3 years
         cutoff = datetime.now() - timedelta(days=3 * 365)
@@ -184,7 +204,7 @@ def main():
             print('Not enough data to compute SMA200.')
             return 1
         summary = summarize(rows)
-        print('EURUSD Daily Bearish Indicators (last close):')
+        print(f'{args.ticker.upper()} Daily Bearish Indicators (last close):')
         print(f"Date: {summary['date']}")
         print(f"Close: {summary['close']:.6f}")
         print(f"SMA50: {summary['sma50']:.6f} | SMA200: {summary['sma200']:.6f}")
