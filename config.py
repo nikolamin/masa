@@ -148,11 +148,13 @@ class Config():
             'CSI300': 3.037,
             'DJIA': 1.6575,
             'EURUSD': 0.0,
+            'CUSTOM': 0.0,
         }
 
         self.market_close_time = {
             'CSI300': '15:00:00',
             'EURUSD': '23:00:00',
+            'CUSTOM': '16:00:00',
         }
         self.invest_env_para = {
             'max_shares': 100, 'initial_asset': 1000000, 'reward_scaling': self.reward_scaling, 'norm_method': self.norm_method, 
