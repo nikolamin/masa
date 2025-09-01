@@ -65,6 +65,19 @@ def main():
     candle_path = os.path.join(args.out, 'market_candles.csv')
     candle_df.to_csv(candle_path, index=False)
     print(f'Saved candlestick data: {candle_path}')
+
+    # Try plotting candlestick with volume and MAs
+    try:
+        import mplfinance as mpf
+        cdf = candle_df.copy()
+        cdf = cdf.rename(columns={'date': 'Date', 'open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close', 'volume': 'Volume'})
+        cdf['Date'] = pd.to_datetime(cdf['Date'])
+        cdf = cdf.set_index('Date')
+        fig_path = os.path.join(args.out, 'market_candles.png')
+        mpf.plot(cdf, type='candle', volume=True, style='yahoo', mav=(50, 200), savefig=fig_path)
+        print(f'Saved candlestick chart: {fig_path}')
+    except Exception as e:
+        print(f'Candlestick plot skipped: {e}')
     return 0
 
 
