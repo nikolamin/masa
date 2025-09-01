@@ -1,0 +1,72 @@
+name: MASA Train & Evaluate
+
+on:
+  workflow_dispatch:
+    inputs:
+      tickers:
+        description: "Comma-separated tickers"
+        required: true
+        default: "GOOGL,AMD,SOFI,COIN,ELF,AVGO,TSM,FUBO,TSLA,NVDA"
+      market_name:
+        description: "Market name label"
+        required: true
+        default: "CUSTOM"
+      topk:
+        description: "Portfolio size (should match number of tickers)"
+        required: true
+        default: "10"
+      start_date:
+        description: "Start date"
+        required: true
+        default: "2018-01-01"
+      end_date:
+        description: "End date"
+        required: true
+        default: "2019-12-31"
+      epochs:
+        description: "Training epochs"
+        required: true
+        default: "10"
+      freq:
+        description: "Frequency"
+        required: true
+        default: "1d"
+      finefreq:
+        description: "Fine frequency"
+        required: true
+        default: "60m"
+
+jobs:
+  train-evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        run: |
+          docker build -t masa:latest .
+
+      - name: Run training & evaluation
+        run: |
+          chmod +x run_portfolio.sh || true
+          TICKERS="${{ github.event.inputs.tickers }}" \
+          MARKET_NAME="${{ github.event.inputs.market_name }}" \
+          TOPK="${{ github.event.inputs.topk }}" \
+          START_DATE="${{ github.event.inputs.start_date }}" \
+          END_DATE="${{ github.event.inputs.end_date }}" \
+          EPOCHS="${{ github.event.inputs.epochs }}" \
+          FREQ="${{ github.event.inputs.freq }}" \
+          FINEFREQ="${{ github.event.inputs.finefreq }}" \
+          bash -lc 'bash run_portfolio.sh'
+
+      - name: Archive evaluation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-artifacts
+          path: |
+            evaluation/**
+            res/**
